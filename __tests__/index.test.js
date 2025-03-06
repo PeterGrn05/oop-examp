@@ -1,33 +1,41 @@
-import Product from "../models/Product.js";
-import Cart from "../models/Cart.js";
-import DiscountService from "../services/DiscountService.js";
-import { describe, test } from '@jest/globals';
+import { DiscountService } from '../DiscountService.js';
+import { beforeEach, describe, expect, test } from '@jest/globals';
 
-describe("Функционирование корзины", () => {
-    test("Добавление товаров", () => {
-        const cart = new Cart();
-        const apple = new Product("Яблоко", 2);
+describe("Функционирование сервиса скидки", () => {
+    let service;
+    let percentageDiscount;
 
-        cart.addItem(apple);
-
-        expect(cart.items.length).toBe(1);
-        expect(cart.items[0]).toBe(apple);
+    beforeEach(() => {
+        service = new DiscountService();
+        percentageDiscount = {
+            apply: (price) => price * 0.8, // 20% скидка
+        };
     });
 
-    test("Общая корзина", () => {
-        const cart = new Cart();
-        cart.addItem(new Product("Яблоко", 2));
-        cart.addItem(new Product("Банан", 3));
+    test('Ошибка при неустановленной стратегии', () => {
+        expect(() => service.getFinalPrice(1000)).toThrow('Стратегия скидок не установлена');
+    }) 
 
-        expect(cart.getTotalPrice()).toBe(5);
-    });
+    test('Корректное принятие стратегии', () => {
+        service.setDiscountStrategy(percentageDiscount);
+        expect(service.getFinalPrice(1000)).toBe(800);
+    })
 
-    test("Скидка 10%", () => {
-        const cart = new Cart();
-        cart.addItem(new Product("Яблоко", 10));
+    test('Сохраняет историю скидок', () => {
+        service.setDiscountStrategy(percentageDiscount);
+        service.getFinalPrice(1000);
+        const history = service.getDiscountHistory();
+        expect(history).toEqual([
+            { originalPrice: 1000, discountedPrice: 800 }
+        ]);
+    })
 
-        const discountedTotal = DiscountService.applyDiscount(cart, 10);
+    test('Удаляет историю скидок', () => {
+        service.setDiscountStrategy(percentageDiscount);
+        service.getFinalPrice(1000);
+        service.clearHistory();
+        expect(service.getDiscountHistory()).toEqual([])
+    })
 
-        expect(discountedTotal).toBe(9);
-    });
+    
 })
